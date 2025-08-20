@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Runner Game Deluxe</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #1e1e1e, #3a3a3a);
+      font-family: Arial, sans-serif;
+      color: white;
+      user-select: none;
+    }
+    canvas {
+      background: #222;
+      border: 3px solid #fff;
+      border-radius: 10px;
+      display: none;
+    }
+    #menu {
+      text-align: center;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 18px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      background: #4cafef;
+      color: white;
+    }
+    #scoreboard {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      font-size: 20px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="menu">
+    <h1>🏃 Runner Game Deluxe 🏃</h1>
+    <p>Choisis ton skin :</p>
+    <button onclick="setSkin('#4cafef')">Bleu</button>
+    <button onclick="setSkin('#e74c3c')">Rouge</button>
+    <button onclick="setSkin('#2ecc71')">Vert</button>
+    <br>
+    <button onclick="startGame()">▶ Jouer</button>
+    <p>Utilise <b>ESPACE</b> ou <b>TAP</b> pour sauter</p>
+  </div>
+
+  <div id="scoreboard">
+    Score : <span id="score">0</span><br>
+    Best : <span id="best">0</span>
+  </div>
+
+  <canvas id="game" width="800" height="400"></canvas>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const scoreboard = document.getElementById("scoreboard");
+    const bestSpan = document.getElementById("best");
+    const scoreSpan = document.getElementById("score");
+
+    let skinColor = "#4cafef";
+    let player, obstacles, frame, score, bestScore, speed;
+
+    // Sons
+    const jumpSound = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
+    const gameOverSound = new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
+
+    function setSkin(color) {
+      skinColor = color;
+    }
+
+    function startGame() {
+      document.getElementById("menu").style.display = "none";
+      canvas.style.display = "block";
+      scoreboard.style.display = "block";
+
+      player = { x: 50, y: 300, width: 30, height: 30, dy: 0, gravity: 0.6, jump: -12, grounded: true };
+      obstacles = [];
+      frame = 0;
+      score = 0;
+      speed = 5;
+
+      bestScore = localStorage.getItem("bestScore") || 0;
+      bestSpan.innerText = bestScore;
+
+      update();
+    }
+
+    function drawPlayer() {
+      ctx.fillStyle = skinColor;
+      ctx.fillRect(player.x, player.y, player.width, player.height);
+    }
+
+    function drawObstacles() {
+      ctx.fillStyle = "#f1c40f";
+      for (let obs of obstacles) {
+        ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+      }
+    }
+
+    function update() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Gravité
+      player.y += player.dy;
+      if (player.y + player.height < canvas.height - 50) {
+        player.dy += player.gravity;
+        player.grounded = false;
+      } else {
+        player.y = canvas.height - 50 - player.height;
+        player.dy = 0;
+        player.grounded = true;
+      }
+
+      // Obstacles
+      if (frame % 100 === 0) {
+        obstacles.push({ x: canvas.width, y: canvas.height - 80, width: 20, height: 50 });
+      }
+      for (let obs of obstacles) {
+        obs.x -= speed;
+        if (obs.x + obs.width < 0) obstacles.shift();
+
+        // Collision
+        if (player.x < obs.x + obs.width &&
+            player.x + player.width > obs.x &&
+            player.y < obs.y + obs.height &&
+            player.y + player.height > obs.y) {
+          gameOver();
+          return;
+        }
+      }
+
+      // Score
+      score++;
+      scoreSpan.innerText = score;
+      if (score > bestScore) {
+        bestScore = score;
+        localStorage.setItem("bestScore", bestScore);
+        bestSpan.innerText = bestScore;
+      }
+
+      // Difficulté progressive
+      if (frame % 500 === 0) {
+        speed += 0.5;
+      }
+
+      drawPlayer();
+      drawObstacles();
+
+      frame++;
+      requestAnimationFrame(update);
+    }
+
+    function gameOver() {
+      gameOverSound.play();
+      alert("💀 Game Over ! Ton score : " + score);
+      canvas.style.display = "none";
+      scoreboard.style.display = "none";
+      document.getElementById("menu").style.display = "block";
+    }
+
+    // Contrôles
+    document.addEventListener("keydown", e => {
+      if (e.code === "Space" && player.grounded) {
+        player.dy = player.jump;
+        jumpSound.play();
+      }
+    });
+    document.addEventListener("touchstart", () => {
+      if (player.grounded) {
+        player.dy = player.jump;
+        jumpSound.play();
+      }
+    });
+  </script>
+</body>
+</html>
